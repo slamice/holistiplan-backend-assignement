@@ -10,7 +10,7 @@ urlpatterns = [
         views.SnippetHighlight.as_view(),
         name="snippet-highlight",
     ),
-    path("users/", views.UserList.as_view(), name="user-list"),
+    path("users/", views.UserCreateList.as_view(), name="user-list"),
     path("users/<int:pk>/", views.UserDetail.as_view(), name="user-detail"),
     path("", views.api_root),
 ]

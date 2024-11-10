@@ -12,6 +12,10 @@ class UserFactory(factory.django.DjangoModelFactory):
     email = factory.Faker("email")  # Faker generates a random email
     password = factory.PostGenerationMethodCall("set_password", "defaultpassword")
 
+    @classmethod
+    def create_admin(cls, **kwargs):
+        return cls.create(is_staff=True, is_superuser=True, **kwargs)
+
 
 class SnippetFactory(DjangoModelFactory):
     class Meta:

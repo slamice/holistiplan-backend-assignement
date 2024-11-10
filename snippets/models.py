@@ -3,6 +3,7 @@ from pygments import highlight
 from pygments.formatters.html import HtmlFormatter
 from pygments.lexers import get_all_lexers, get_lexer_by_name
 from pygments.styles import get_all_styles
+from django.contrib.auth.models import User
 
 LEXERS = [item for item in get_all_lexers() if item[1]]
 LANGUAGE_CHOICES = sorted([(item[1][0], item[0]) for item in LEXERS])
@@ -42,3 +43,20 @@ class Snippet(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class UserSoftDelete(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="soft_delete_status",
+    )
+    is_deleted = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Soft delete record for {self.user.username}"
+
+
+def soft_delete_user(user):
+    """Soft delete the user by creating or updating the `UserSoftDelete` entry."""
+    UserSoftDelete.objects.update_or_create(user=user, defaults={"is_deleted": True})

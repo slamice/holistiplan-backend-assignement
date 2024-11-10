@@ -1,11 +1,14 @@
 from django.contrib.auth.models import User
-from rest_framework import generics, permissions, renderers
+from rest_framework import generics, permissions, renderers, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
-from .models import Snippet
+from django.db.models import Q
+
+from .models import Snippet, soft_delete_user
 from .permissions import IsOwnerOrReadOnly
 from .serializers import SnippetSerializer, UserSerializer
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -39,8 +42,8 @@ class SnippetList(generics.ListCreateAPIView):
         try:
             result = Snippet.objects.all()
         except Exception as e:
-            breakpoint()
             logging.warning(f"Could not find Snippet objects: {e}")
+
         return result
 
     def perform_create(self, serializer):
@@ -59,16 +62,62 @@ class SnippetDetail(generics.RetrieveUpdateDestroyAPIView):
         try:
             result = Snippet.objects.first()
         except Exception as e:
-            breakpoint()
             logging.warning(f"Could not find Snippet objects: {e}")
+
         return result
 
 
-class UserList(generics.ListAPIView):
-    queryset = User.objects.all()
+class UserCreateList(
+    generics.ListCreateAPIView,
+):
     serializer_class = UserSerializer
+    """
+    List or create products.
+
+    Query Parameters:
+    - `include_soft_deletes` (str): Tells an admin if they can include soft delete.
+    """
+
+    def get_queryset(self):
+        include_soft_deletes = self.request.query_params.get(
+            "include_soft_deletes", "False"
+        )
+        query = User.objects
+
+        if self.request.user.is_staff and include_soft_deletes == "True":
+            return query.all()
+
+        return query.filter(
+            Q(soft_delete_status__isnull=True) | Q(soft_delete_status=False)
+        )
+
+    def get_permissions(self):
+        method = self.request.method
+        if method == "POST":
+            return [permissions.IsAdminUser()]  # Only authenticated users can create
+        return [permissions.IsAuthenticatedOrReadOnly()]  # Anyone can view
 
 
-class UserDetail(generics.RetrieveAPIView):
-    queryset = User.objects.all()
+class UserDetail(
+    generics.RetrieveAPIView,
+    generics.DestroyAPIView,
+):
     serializer_class = UserSerializer
+
+    def get_queryset(self):
+        return User.objects.filter(
+            Q(soft_delete_status__isnull=True) | Q(soft_delete_status=False)
+        )
+
+    def get_permissions(self):
+        method = self.request.method
+        if method == "DELETE":
+            return [permissions.IsAdminUser()]  # Only authenticated users can create
+        return [permissions.IsAuthenticatedOrReadOnly()]  # Anyone can view
+
+    def destroy(self, request, *args, **kwargs):
+        user = self.get_object()
+        soft_delete_user(user)
+        return Response(
+            {"detail": "User soft-deleted."}, status=status.HTTP_204_NO_CONTENT
+        )
