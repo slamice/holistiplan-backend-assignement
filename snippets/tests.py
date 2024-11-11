@@ -35,14 +35,14 @@ class BaseAPITest(APITestCase):
 class TestSnippetList(BaseAPITest):
     def test__get_queryset__no_objects(self):
         """Test that the view returns no snippets."""
-        response = self.api_client.get(reverse("snippet-list"))
+        response = self.client.get(reverse("snippet-list"))
         assert response.data["results"] == []
 
     def test__get_queryset(self):
         """Test that the view returns no snippets."""
         user = UserFactory.create()
         SnippetFactory.create(owner=user)
-        response = self.api_client.get(reverse("snippet-list"))
+        response = self.client.get(reverse("snippet-list"))
         assert len(response.data["results"]) == 1
 
 
@@ -61,7 +61,7 @@ class TestUserDetail(BaseAPITest):
         user = UserFactory.create()
         response = self.client.delete(reverse("user-detail", args=[user.id]))
         assert response.status_code == status.HTTP_204_NO_CONTENT  # type: ignore
-        assert user.soft_delete_status == True
+        assert user.soft_delete_status.is_deleted == True
 
     def test__delete_user__user_doesnt_exist(self):
         response = self.client.delete(reverse("user-detail", args=[0]))

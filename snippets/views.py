@@ -8,6 +8,8 @@ from django.db.models import Q
 from .models import Snippet, soft_delete_user
 from .permissions import IsOwnerOrReadOnly
 from .serializers import SnippetSerializer, UserSerializer
+from audits.audit_logger import audit_log_delete, audit_log_create
+
 
 import logging
 
@@ -45,6 +47,10 @@ class SnippetList(generics.ListCreateAPIView):
             logging.warning(f"Could not find Snippet objects: {e}")
 
         return result
+
+    @audit_log_create
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
@@ -97,6 +103,10 @@ class UserCreateList(
             return [permissions.IsAdminUser()]  # Only authenticated users can create
         return [permissions.IsAuthenticatedOrReadOnly()]  # Anyone can view
 
+    @audit_log_create
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
 
 class UserDetail(
     generics.RetrieveAPIView,
@@ -115,9 +125,11 @@ class UserDetail(
             return [permissions.IsAdminUser()]  # Only authenticated users can create
         return [permissions.IsAuthenticatedOrReadOnly()]  # Anyone can view
 
+    @audit_log_delete
     def destroy(self, request, *args, **kwargs):
         user = self.get_object()
         soft_delete_user(user)
+
         return Response(
             {"detail": "User soft-deleted."}, status=status.HTTP_204_NO_CONTENT
         )
