@@ -7,15 +7,19 @@ source env/bin/activate
 pip install -r requirements.txt
 ```
 
-2. At least create a super user to test against:
+2. Run migrations
+```
+./manage.py migrate
+```
+
+3. At least create a super user to test against:
 
 ```
 ./manage.py createsuperuser
 ```
 
-3. Start django
+4. Start django
 ```
-./manage.py migrate
 ./manage.py runserver
 ```
 
